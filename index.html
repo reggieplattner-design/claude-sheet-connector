@@ -280,7 +280,7 @@ function jsonp(url) {
     const timeout = setTimeout(() => {
       cleanup();
       reject(new Error('Request timed out'));
-    }, 15000);
+    }, 90000);
     function cleanup() {
       delete window[cbName];
       if (script.parentNode) script.parentNode.removeChild(script);
@@ -411,7 +411,7 @@ async function withActionStatus(fn) {
 }
 
 const ALL_SHEETS = [
-  { label: 'US Weekly Data',     id: '12BftXC_HSKSBLlWOawXYqXndpRKXajIyXMgpCpv8GvU' },
+  { label: 'UK Weekly Data',     id: '12BftXC_HSKSBLlWOawXYqXndpRKXajIyXMgpCpv8GvU' },
   { label: 'DE Weekly Data',     id: '1baVlTjwi5K2tgtbZK4iklQhm7q7RMrjuEbAC59UpA14' },
   { label: 'AU Weekly Data',     id: '1m6DGNsOlNP2ovtG2mLfvzxAdBXWmgKjBpGc5Xy1cV80' },
   { label: 'MX FBA Weekly Data', id: '12kex7zDUwKGolY_h-N_AyWNmHXP4JhIFiHyULoo6PLg' }
@@ -428,14 +428,15 @@ async function doNewTabWithFormulas() {
   const s = document.getElementById('shortcut-status');
   closeModal();
 
-  let html = '<div class="status info">Running across all 4 sheets…</div><div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;" id="sheet-results">';
+  let html = '<div class="status info">Running one sheet at a time — please wait…</div><div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;" id="sheet-results">';
   ALL_SHEETS.forEach(sh => {
     html += `<div id="result-${sh.id.substring(0,8)}" style="font-size:13px;padding:7px 12px;border-radius:6px;background:var(--info-bg);color:var(--info-text);">⏳ ${sh.label}…</div>`;
   });
   html += '</div>';
   s.innerHTML = html;
 
-  const results = await Promise.all(ALL_SHEETS.map(async sh => {
+  const results = [];
+  for (const sh of ALL_SHEETS) {
     try {
       const d = await apiForSheet(sh.id, {
         action: 'copyRowsWithFormulas',
@@ -443,26 +444,26 @@ async function doNewTabWithFormulas() {
         newTabName: newTabName,
         rowNumbers: [2, 3]
       });
-      return { sh, d };
+      results.push({ sh, d });
     } catch(e) {
-      return { sh, d: { success: false, error: e.message } };
+      results.push({ sh, d: { success: false, error: e.message } });
     }
-  }));
-
-  results.forEach(({ sh, d }) => {
     const el = document.getElementById('result-' + sh.id.substring(0,8));
+    const last = results[results.length - 1];
     if (el) {
-      if (d.success) {
+      if (last.d.success) {
         el.style.background = 'var(--success-bg)';
         el.style.color = 'var(--success-text)';
         el.textContent = '✓ ' + sh.label + ': tab created';
       } else {
         el.style.background = 'var(--error-bg)';
         el.style.color = 'var(--error-text)';
-        el.textContent = '✗ ' + sh.label + ': ' + d.error;
+        el.textContent = '✗ ' + sh.label + ': ' + last.d.error;
       }
     }
-  });
+  }
+
+
 
   const tabs = await api({ action: 'getSheetNames' });
   if (tabs.success) { STATE.tabs = tabs.sheets; STATE.activeTab = newTabName; renderTabs(); }
