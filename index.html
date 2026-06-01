@@ -280,7 +280,7 @@ function jsonp(url) {
     const timeout = setTimeout(() => {
       cleanup();
       reject(new Error('Request timed out'));
-    }, 90000);
+    }, 120000);
     function cleanup() {
       delete window[cbName];
       if (script.parentNode) script.parentNode.removeChild(script);
@@ -411,10 +411,10 @@ async function withActionStatus(fn) {
 }
 
 const ALL_SHEETS = [
-  { label: 'UK Weekly Data',     id: '12BftXC_HSKSBLlWOawXYqXndpRKXajIyXMgpCpv8GvU' },
-  { label: 'DE Weekly Data',     id: '1baVlTjwi5K2tgtbZK4iklQhm7q7RMrjuEbAC59UpA14' },
-  { label: 'AU Weekly Data',     id: '1m6DGNsOlNP2ovtG2mLfvzxAdBXWmgKjBpGc5Xy1cV80' },
-  { label: 'MX FBA Weekly Data', id: '12kex7zDUwKGolY_h-N_AyWNmHXP4JhIFiHyULoo6PLg' }
+  { label: 'UK Weekly Data',     id: '12BftXC_HSKSBLlWOawXYqXndpRKXajIyXMgpCpv8GvU', skuLookupRow: 11 },
+  { label: 'DE Weekly Data',     id: '1baVlTjwi5K2tgtbZK4iklQhm7q7RMrjuEbAC59UpA14', skuLookupRow: 11 },
+  { label: 'AU Weekly Data',     id: '1m6DGNsOlNP2ovtG2mLfvzxAdBXWmgKjBpGc5Xy1cV80', skuLookupRow: 12 },
+  { label: 'MX FBA Weekly Data', id: '12kex7zDUwKGolY_h-N_AyWNmHXP4JhIFiHyULoo6PLg', skuLookupRow: 12 }
 ];
 
 async function apiForSheet(sheetId, payload) {
@@ -442,7 +442,8 @@ async function doNewTabWithFormulas() {
         action: 'copyRowsWithFormulas',
         sourceSheetName: '5/21 - 5/27',
         newTabName: newTabName,
-        rowNumbers: [2, 3]
+        rowNumbers: [2, 3],
+        skuLookupRow: sh.skuLookupRow
       });
       results.push({ sh, d });
     } catch(e) {
