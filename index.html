@@ -437,6 +437,8 @@ async function doNewTabWithFormulas() {
 
   const results = [];
   for (const sh of ALL_SHEETS) {
+    const el = document.getElementById('result-' + sh.id.substring(0,8));
+    let timedOut = false;
     try {
       const d = await apiForSheet(sh.id, {
         action: 'copyRowsWithFormulas',
@@ -446,20 +448,51 @@ async function doNewTabWithFormulas() {
         skuLookupRow: sh.skuLookupRow
       });
       results.push({ sh, d });
-    } catch(e) {
-      results.push({ sh, d: { success: false, error: e.message } });
-    }
-    const el = document.getElementById('result-' + sh.id.substring(0,8));
-    const last = results[results.length - 1];
-    if (el) {
-      if (last.d.success) {
+      if (el) {
         el.style.background = 'var(--success-bg)';
         el.style.color = 'var(--success-text)';
         el.textContent = '✓ ' + sh.label + ': tab created';
-      } else {
-        el.style.background = 'var(--error-bg)';
-        el.style.color = 'var(--error-text)';
-        el.textContent = '✗ ' + sh.label + ': ' + last.d.error;
+      }
+    } catch(e) {
+      timedOut = e.message.includes('timed out');
+      results.push({ sh, d: { success: false, error: e.message } });
+      if (el) {
+        if (timedOut) {
+          el.style.background = 'var(--warning-bg, #fff8e1)';
+          el.style.color = 'var(--warning-text, #7a5c00)';
+          el.textContent = '⏳ ' + sh.label + ': tab likely created, retrying SKU Lookup…';
+        } else {
+          el.style.background = 'var(--error-bg)';
+          el.style.color = 'var(--error-text)';
+          el.textContent = '✗ ' + sh.label + ': ' + e.message;
+        }
+      }
+      if (timedOut) {
+        try {
+          await new Promise(r => setTimeout(r, 3000));
+          const retry = await apiForSheet(sh.id, {
+            action: 'writeSkuLookup',
+            newTabName: newTabName,
+            skuLookupRow: sh.skuLookupRow
+          });
+          if (el) {
+            if (retry.success) {
+              el.style.background = 'var(--success-bg)';
+              el.style.color = 'var(--success-text)';
+              el.textContent = '✓ ' + sh.label + ': tab created + SKU Lookup updated';
+            } else {
+              el.style.background = 'var(--error-bg)';
+              el.style.color = 'var(--error-text)';
+              el.textContent = '⚠ ' + sh.label + ': tab created but SKU Lookup failed: ' + retry.error;
+            }
+          }
+        } catch(retryErr) {
+          if (el) {
+            el.style.background = 'var(--error-bg)';
+            el.style.color = 'var(--error-text)';
+            el.textContent = '⚠ ' + sh.label + ': tab created but SKU Lookup retry failed';
+          }
+        }
       }
     }
   }
