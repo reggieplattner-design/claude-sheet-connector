@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Claude Sheet Connector</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green: #1a7a30;
+    --green-dark: #145e25;
+    --green-light: #e8f5ec;
+    --bg: #f7f8f6;
+    --surface: #ffffff;
+    --border: #e0e2de;
+    --border-strong: #c8cbc4;
+    --text: #1a1c18;
+    --text-muted: #5a5f55;
+    --text-faint: #9aa095;
+    --success-bg: #e8f5ec;
+    --success-text: #1a5c2a;
+    --error-bg: #fdecea;
+    --error-text: #8b1a1a;
+    --info-bg: #e8f0fe;
+    --info-text: #1a3a7a;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .container { max-width: 780px; margin: 0 auto; }
+
+  .app-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 2rem;
+  }
+  .app-logo {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: var(--green);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .app-logo svg { width: 24px; height: 24px; fill: white; }
+  .app-title { font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+  .app-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+  }
+
+  .card-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-faint);
+    margin-bottom: 10px;
+  }
+
+  .field-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+  .field-row:last-child { margin-bottom: 0; }
+
+  input[type=text], input[type=password], input[type=number], select, textarea {
+    width: 100%; padding: 9px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: 14px; font-family: inherit;
+    background: var(--surface); color: var(--text);
+    outline: none; transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--green); }
+  textarea { resize: vertical; min-height: 80px; font-family: 'Courier New', monospace; font-size: 13px; }
+
+  button {
+    padding: 9px 18px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-strong);
+    background: var(--surface); color: var(--text);
+    font-size: 14px; font-family: inherit;
+    cursor: pointer; white-space: nowrap;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  button:hover { background: var(--bg); }
+  .btn-primary { background: var(--green); color: white; border-color: var(--green); }
+  .btn-primary:hover { background: var(--green-dark); border-color: var(--green-dark); }
+  .btn-sm { padding: 6px 13px; font-size: 13px; }
+  .btn-danger { background: #c0392b; color: white; border-color: #c0392b; }
+  .btn-danger:hover { background: #a93226; }
+
+  .status {
+    font-size: 13px; padding: 9px 13px;
+    border-radius: var(--radius-sm); margin-top: 10px;
+  }
+  .status.success { background: var(--success-bg); color: var(--success-text); }
+  .status.error { background: var(--error-bg); color: var(--error-text); }
+  .status.info { background: var(--info-bg); color: var(--info-text); }
+
+  .tabs-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+  .tab-pill {
+    font-size: 13px; padding: 4px 12px;
+    border-radius: 20px; border: 1px solid var(--border-strong);
+    cursor: pointer; background: var(--bg); color: var(--text-muted);
+    transition: all 0.12s;
+  }
+  .tab-pill:hover { border-color: var(--green); color: var(--green); }
+  .tab-pill.active { background: var(--green); color: white; border-color: var(--green); }
+
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .table-wrap {
+    overflow-x: auto; overflow-y: auto; max-height: 320px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    margin-top: 10px;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th {
+    background: var(--bg); padding: 7px 12px; text-align: left;
+    font-weight: 600; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; white-space: nowrap;
+  }
+  tbody td {
+    padding: 6px 12px; border-bottom: 1px solid var(--border);
+    color: var(--text-muted); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--bg); }
+
+  .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .action-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border); background: var(--bg);
+    cursor: pointer; font-size: 13px; text-align: left; color: var(--text);
+    transition: all 0.12s;
+  }
+  .action-btn:hover { background: var(--green-light); border-color: var(--green); color: var(--green-dark); }
+  .action-icon { font-size: 18px; }
+
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: var(--surface); border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 1.5rem;
+    width: 360px; max-width: 95vw;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+  .modal-box h3 { font-size: 16px; font-weight: 600; margin-bottom: 1rem; }
+  .field-group { margin-bottom: 12px; }
+  .field-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; font-weight: 500; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1rem; }
+
+  .hidden { display: none; }
+
+  .divider { height: 1px; background: var(--border); margin: 1rem 0; }
+
+  .save-hint {
+    font-size: 12px; color: var(--text-faint);
+    margin-top: 6px; font-style: italic;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="app-header">
+    <div class="app-logo">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M19 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V5a2 2 0 00-2-2zm-8 14H7v-2h4v2zm0-4H7v-2h4v2zm0-4H7V7h4v2zm6 8h-4v-2h4v2zm0-4h-4v-2h4v2zm0-4h-4V7h4v2z"/>
+      </svg>
+    </div>
+    <div>
+      <div class="app-title">Claude Sheet Connector</div>
+      <div class="app-subtitle">Connect Claude to any Google Sheet — read, write, and edit with ease</div>
+    </div>
+  </div>
+
+  <!-- Connection -->
+  <div class="card">
+    <div class="card-label">Connection</div>
+    <div class="field-row">
+      <input type="password" id="web-app-url" placeholder="Paste your Apps Script Web App URL" style="flex:1;" />
+    </div>
+    <div class="field-row">
+      <input type="text" id="sheet-id" placeholder="Google Sheet ID (from the URL)" style="flex:1;" />
+      <button class="btn-primary" onclick="connect()">Connect</button>
+    </div>
+    <p class="save-hint">Your URL and Sheet ID are saved in your browser for next time.</p>
+    <div id="conn-status"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="card hidden" id="sheet-panel">
+    <div class="card-label">Tabs</div>
+    <div class="tabs-row" id="tabs-row"></div>
+    <div class="btn-row">
+      <button class="btn-sm" onclick="loadAll()">&#8635; Load data</button>
+      <button class="btn-sm" onclick="openModal('create-tab')">+ New tab</button>
+      <button class="btn-sm" onclick="openModal('rename-tab')">&#9998; Rename tab</button>
+      <button class="btn-sm btn-danger" onclick="openModal('delete-tab')">&#128465; Delete tab</button>
+    </div>
+  </div>
+
+  <!-- Data -->
+  <div class="card hidden" id="data-panel">
+    <div class="card-label">Data — <span id="active-tab-label" style="text-transform:none;font-weight:600;color:var(--green)"></span></div>
+    <div class="table-wrap" id="table-wrap"></div>
+  </div>
+
+  <!-- Actions -->
+  <div class="card hidden" id="actions-panel">
+    <div class="card-label">Edit actions</div>
+    <div class="action-grid">
+      <button class="action-btn" onclick="openModal('append-row')"><span class="action-icon">&#8595;</span> Append row</button>
+      <button class="action-btn" onclick="openModal('write-range')"><span class="action-icon">&#9998;</span> Write to range</button>
+      <button class="action-btn" onclick="openModal('delete-row')"><span class="action-icon">&#128465;</span> Delete row</button>
+      <button class="action-btn" onclick="openModal('clear-range')"><span class="action-icon">&#9003;</span> Clear range</button>
+    </div>
+    <div id="action-status"></div>
+  </div>
+
+  <!-- Claude instruction box -->
+  <div class="card hidden" id="claude-panel">
+    <div class="card-label">Copy context for Claude</div>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">
+      Describe what you want Claude to do, then click the button to copy a ready-to-paste message into your Claude chat.
+    </p>
+    <div class="field-group">
+      <label>Your instruction</label>
+      <textarea id="claude-input" placeholder="e.g. Add a row: name John, sales 500, date today&#10;Update cell B2 to 750&#10;Create a new tab called Q3 Summary"></textarea>
+    </div>
+    <button class="btn-primary" onclick="copyContext()" style="width:100%">Copy context for Claude</button>
+    <div id="copy-status"></div>
+  </div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal-box" id="modal-box"></div>
+</div>
+
+<script>
+const STATE = { url: '', sheetId: '', activeTab: '', tabs: [] };
+
+// Restore saved values
+window.addEventListener('load', () => {
+  const savedUrl = localStorage.getItem('claude_sheet_url') || '';
+  const savedId = localStorage.getItem('claude_sheet_id') || '';
+  if (savedUrl) document.getElementById('web-app-url').value = savedUrl;
+  if (savedId) document.getElementById('sheet-id').value = savedId;
+});
+
+async function api(payload) {
+  const encoded = encodeURIComponent(JSON.stringify({ sheetId: STATE.sheetId, ...payload }));
+  const r = await fetch(STATE.url + '?payload=' + encoded, { redirect: 'follow' });
+  const text = await r.text();
+  try { return JSON.parse(text); }
+  catch(e) { throw new Error('Unexpected response: ' + text.substring(0, 200)); }
+}
+
+function setStatus(elId, msg, type) {
+  document.getElementById(elId).innerHTML = `<div class="status ${type}">${msg}</div>`;
+}
+
+async function connect() {
+  STATE.url = document.getElementById('web-app-url').value.trim();
+  STATE.sheetId = document.getElementById('sheet-id').value.trim();
+  if (!STATE.url || !STATE.sheetId) return setStatus('conn-status', 'Please fill in both fields.', 'error');
+  setStatus('conn-status', 'Connecting…', 'info');
+  try {
+    const d = await api({ action: 'getSheetNames' });
+    if (!d.success) return setStatus('conn-status', 'Error: ' + d.error, 'error');
+    STATE.tabs = d.sheets;
+    STATE.activeTab = d.sheets[0] || '';
+    localStorage.setItem('claude_sheet_url', STATE.url);
+    localStorage.setItem('claude_sheet_id', STATE.sheetId);
+    setStatus('conn-status', `&#10003; Connected! Found ${d.sheets.length} tab(s): ${d.sheets.join(', ')}`, 'success');
+    renderTabs();
+    ['sheet-panel','actions-panel','claude-panel'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+  } catch(e) {
+    setStatus('conn-status', 'Connection failed: ' + e.message, 'error');
+  }
+}
+
+function renderTabs() {
+  document.getElementById('tabs-row').innerHTML = STATE.tabs.map(t =>
+    `<span class="tab-pill ${t===STATE.activeTab?'active':''}" onclick="selectTab('${t.replace(/'/g,"\\'")}')">${t}</span>`
+  ).join('');
+}
+
+function selectTab(name) { STATE.activeTab = name; renderTabs(); }
+
+async function loadAll() {
+  const panel = document.getElementById('data-panel');
+  const wrap = document.getElementById('table-wrap');
+  document.getElementById('active-tab-label').textContent = STATE.activeTab;
+  wrap.innerHTML = '<div class="status info">Loading…</div>';
+  panel.classList.remove('hidden');
+  try {
+    const d = await api({ action: 'readAll', sheetName: STATE.activeTab });
+    if (!d.success) { wrap.innerHTML = `<div class="status error">${d.error}</div>`; return; }
+    if (!d.values || d.values.length === 0) { wrap.innerHTML = '<div class="status info">This tab is empty.</div>'; return; }
+    const headers = d.values[0];
+    const rows = d.values.slice(1);
+    wrap.innerHTML = `<table>
+      <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r=>`<tr>${headers.map((_,i)=>`<td>${r[i]??''}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table>`;
+  } catch(e) { wrap.innerHTML = `<div class="status error">${e.message}</div>`; }
+}
+
+function openModal(type) {
+  const mb = document.getElementById('modal-box');
+  let html = '';
+  if (type === 'append-row') {
+    html = `<h3>Append row</h3>
+    <div class="field-group"><label>Values (comma-separated)</label><input id="m-vals" placeholder="John, 500, 2026-06-01" /></div>
+    <div class="modal-actions"><button onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="doAppendRow()">Append</button></div>`;
+  } else if (type === 'write-range') {
+    html = `<h3>Write to range</h3>
+    <div class="field-group"><label>Range (e.g. A1:C3)</label><input id="m-range" placeholder="A1:C3" /></div>
+    <div class="field-group"><label>Values (one row per line, comma-separated)</label><textarea id="m-vals" placeholder="Name, Score&#10;Alice, 95&#10;Bob, 88"></textarea></div>
+    <div class="modal-actions"><button onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="doWriteRange()">Write</button></div>`;
+  } else if (type === 'delete-row') {
+    html = `<h3>Delete row</h3>
+    <div class="field-group"><label>Row number (1 = header row)</label><input id="m-row" type="number" min="1" value="2" /></div>
+    <div class="modal-actions"><button onclick="closeModal()">Cancel</button><button class="btn-danger" onclick="doDeleteRow()">Delete</button></div>`;
+  } else if (type === 'clear-range') {
+    html = `<h3>Clear range</h3>
+    <div class="field-group"><label>Range (e.g. B2:D5)</label><input id="m-range" placeholder="B2:D5" /></div>
+    <div class="modal-actions"><button onclick="closeModal()">Cancel</button><button class="btn-danger" onclick="doClearRange()">Clear</button></div>`;
+  } else if (type === 'create-tab') {
+    html = `<h3>Create new tab</h3>
+    <div class="field-group"><label>Tab name</label><input id="m-tabname" placeholder="Sheet2" /></div>
+    <div class="modal-actions"><button onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="doCreateTab()">Create</button></div>`;
+  } else if (type === 'rename-tab') {
+    html = `<h3>Rename tab</h3>
+    <div class="field-group"><label>Current tab</label><select id="m-oldname">${STATE.tabs.map(t=>`<option value="${t}">${t}</option>`).join('')}</select></div>
+    <div class="field-group"><label>New name</label><input id="m-newname" placeholder="New name" /></div>
+    <div class="modal-actions"><button onclick="closeModal()">Cancel</button><button class="btn-primary" onclick="doRenameTab()">Rename</button></div>`;
+  } else if (type === 'delete-tab') {
+    html = `<h3>Delete tab</h3>
+    <div class="field-group"><label>Tab to delete</label><select id="m-deltab">${STATE.tabs.map(t=>`<option value="${t}">${t}</option>`).join('')}</select></div>
+    <p style="font-size:13px;color:#8b1a1a;margin-top:8px;">&#9888; This cannot be undone.</p>
+    <div class="modal-actions"><button onclick="closeModal()">Cancel</button><button class="btn-danger" onclick="doDeleteTab()">Delete</button></div>`;
+  }
+  mb.innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+async function withActionStatus(fn) {
+  const s = document.getElementById('action-status');
+  s.innerHTML = '<div class="status info">Working…</div>';
+  closeModal();
+  try {
+    const d = await fn();
+    if (d.success) {
+      s.innerHTML = `<div class="status success">&#10003; ${d.message || 'Done!'}</div>`;
+      await loadAll();
+    } else {
+      s.innerHTML = `<div class="status error">Error: ${d.error}</div>`;
+    }
+  } catch(e) { s.innerHTML = `<div class="status error">${e.message}</div>`; }
+}
+
+async function doAppendRow() {
+  const vals = document.getElementById('m-vals').value.split(',').map(v=>v.trim());
+  withActionStatus(() => api({ action: 'appendRow', sheetName: STATE.activeTab, row: vals }));
+}
+async function doWriteRange() {
+  const range = document.getElementById('m-range').value.trim();
+  const values = document.getElementById('m-vals').value.trim().split('\n').map(r=>r.split(',').map(c=>c.trim()));
+  withActionStatus(() => api({ action: 'writeRange', sheetName: STATE.activeTab, range, values }));
+}
+async function doDeleteRow() {
+  withActionStatus(() => api({ action: 'deleteRow', sheetName: STATE.activeTab, rowIndex: parseInt(document.getElementById('m-row').value) }));
+}
+async function doClearRange() {
+  withActionStatus(() => api({ action: 'clearRange', sheetName: STATE.activeTab, range: document.getElementById('m-range').value.trim() }));
+}
+async function doCreateTab() {
+  const name = document.getElementById('m-tabname').value.trim();
+  await withActionStatus(() => api({ action: 'createTab', tabName: name }));
+  const d = await api({ action: 'getSheetNames' });
+  if (d.success) { STATE.tabs = d.sheets; STATE.activeTab = name; renderTabs(); }
+}
+async function doRenameTab() {
+  const oldName = document.getElementById('m-oldname').value;
+  const newName = document.getElementById('m-newname').value.trim();
+  await withActionStatus(() => api({ action: 'renameTab', sheetName: oldName, newName }));
+  const d = await api({ action: 'getSheetNames' });
+  if (d.success) { STATE.tabs = d.sheets; STATE.activeTab = newName; renderTabs(); }
+}
+async function doDeleteTab() {
+  const name = document.getElementById('m-deltab').value;
+  await withActionStatus(() => api({ action: 'deleteTab', sheetName: name }));
+  const d = await api({ action: 'getSheetNames' });
+  if (d.success) { STATE.tabs = d.sheets; STATE.activeTab = d.sheets[0]||''; renderTabs(); }
+}
+
+function copyContext() {
+  const input = document.getElementById('claude-input').value.trim();
+  if (!input) { setStatus('copy-status', 'Please enter an instruction first.', 'error'); return; }
+  const msg = `[Sheet Connector Context]
+Web App URL: ${STATE.url}
+Sheet ID: ${STATE.sheetId}
+Active tab: ${STATE.activeTab}
+All tabs: ${STATE.tabs.join(', ')}
+
+Request: ${input}
+
+Please call the Apps Script Web App using a GET request with the payload as a URL-encoded JSON parameter, perform the requested action, and confirm what was done.`;
+  navigator.clipboard.writeText(msg).then(() => {
+    setStatus('copy-status', '&#10003; Copied! Paste it into your Claude chat.', 'success');
+  }).catch(() => {
+    document.getElementById('copy-status').innerHTML = `<textarea style="width:100%;height:120px;font-size:12px;margin-top:8px;">${msg}</textarea>`;
+  });
+}
+</script>
+</body>
+</html>
